@@ -1,0 +1,21 @@
+{
+  "Author": "Vali",
+  "Name": "Retainer Inventory Price",
+  "InternalName": "RetainerInventoryPrice",
+  "AssemblyVersion": "1.0.0",
+  "Punchline": "Calculate the total market value of all your retainers",
+  "Description": "Scans your retainer inventories when you open them and calculates their total estimated market value using Universalis prices.",
+  "RepoUrl": "https://github.com/Valiice/RetainerInventoryPrice",
+  "ApplicableVersion": "any",
+  "DalamudApiLevel": 14,
+  "LoadPriority": 0,
+  "Tags": [
+    "retainer",
+    "inventory",
+    "gil",
+    "marketboard",
+    "prices"
+  ],
+  "IconUrl": "",
+  "ImageUrls": []
+}

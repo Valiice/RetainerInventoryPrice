@@ -1,0 +1,17 @@
+﻿<Project Sdk="Dalamud.NET.Sdk/14.0.1">
+	<PropertyGroup>
+		<TargetFramework>net10.0-windows7.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<Platforms>x64</Platforms>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+	</PropertyGroup>
+	<ItemGroup>
+	  <None Include="NuGet.Config" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="ECommons" Version="3.1.0.10" />
+	</ItemGroup>
+</Project>
