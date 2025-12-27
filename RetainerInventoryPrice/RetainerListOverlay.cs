@@ -1,16 +1,16 @@
-﻿using ECommons.DalamudServices;
+﻿using Dalamud.Bindings.ImGui;
+using ECommons.DalamudServices;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using System.Numerics;
-using Dalamud.Bindings.ImGui;
 
 namespace RetainerInventoryPrice;
 
 public unsafe class RetainerListOverlay : IDisposable
 {
-    private const float StartYOffset = 80f;
-    private const float RowHeight = 25f;
-    private const float ColumnXOffset = 175f;
+    private const float _startYOffset = 80f;
+    private const float _rowHeight = 24f;
+    private const float _columnXOffset = 175f;
 
     public RetainerListOverlay()
     {
@@ -20,6 +20,8 @@ public unsafe class RetainerListOverlay : IDisposable
     public void Dispose()
     {
         Svc.PluginInterface.UiBuilder.Draw -= Draw;
+
+        GC.SuppressFinalize(this);
     }
 
     private void Draw()
@@ -42,53 +44,35 @@ public unsafe class RetainerListOverlay : IDisposable
             var retainer = manager->Retainers[i];
             if (retainer.RetainerId == 0) continue;
 
-            long totalValue = 0;
-            if (Plugin.Instance.Configuration.RetainerInventories.TryGetValue(retainer.RetainerId, out var items))
-            {
-                foreach (var item in items)
-                {
-                    if (Plugin.Instance.Configuration.PriceCache.TryGetValue(item.ItemId, out var price))
-                    {
-                        totalValue += price * item.Quantity;
-                    }
-                }
-            }
-
-            var x = addon->X + (ColumnXOffset * addon->Scale);
-            var y = addon->Y + ((StartYOffset + (activeRow * RowHeight)) * addon->Scale);
+            long totalValue = Plugin.Instance.GetRetainerValue(retainer.RetainerId);
 
             if (totalValue > 0)
             {
-                var text = $"{totalValue:N0} G";
+                var pos = new Vector2(
+                    addon->X + (_columnXOffset * addon->Scale),
+                    addon->Y + ((_startYOffset + (activeRow * _rowHeight)) * addon->Scale)
+                );
 
-                ImGui.SetNextWindowPos(new Vector2(x, y));
-
-                ImGui.SetNextWindowSize(new Vector2(150, 0));
-
-                ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0, 0));
-
-                ImGui.Begin($"RetOverlay_{retainer.RetainerId}",
-                    ImGuiWindowFlags.NoDecoration |
-                    ImGuiWindowFlags.NoBackground |
-                    ImGuiWindowFlags.NoInputs |
-                    ImGuiWindowFlags.NoFocusOnAppearing |
-                    ImGuiWindowFlags.NoNav |
-                    ImGuiWindowFlags.NoSavedSettings |
-                    ImGuiWindowFlags.NoScrollbar |
-                    ImGuiWindowFlags.NoBringToFrontOnFocus);
-
-                ImGui.SetCursorPos(new Vector2(1, 1));
-                ImGui.TextColored(new Vector4(0, 0, 0, 1), text);
-
-                ImGui.SetCursorPos(new Vector2(0, 0));
-                ImGui.TextColored(new Vector4(0.5f, 1f, 0.5f, 1f), text);
-
-                ImGui.End();
-
-                ImGui.PopStyleVar();
+                DrawOverlayText(retainer.RetainerId, pos, $"{totalValue:N0} G");
             }
-
             activeRow++;
         }
+    }
+
+    private static void DrawOverlayText(ulong id, Vector2 pos, string text)
+    {
+        ImGui.SetNextWindowPos(pos);
+        ImGui.SetNextWindowSize(new Vector2(150, 0));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+
+        if (ImGui.Begin($"RetOverlay_{id}", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoBringToFrontOnFocus))
+        {
+            ImGui.SetCursorPos(Vector2.One);
+            ImGui.TextColored(new Vector4(0, 0, 0, 1), text);
+            ImGui.SetCursorPos(Vector2.Zero);
+            ImGui.TextColored(new Vector4(0.5f, 1f, 0.5f, 1f), text);
+            ImGui.End();
+        }
+        ImGui.PopStyleVar();
     }
 }

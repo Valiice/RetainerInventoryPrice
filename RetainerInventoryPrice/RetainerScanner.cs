@@ -7,6 +7,7 @@ namespace RetainerInventoryPrice;
 
 public unsafe class RetainerScanner
 {
+    private DateTime _lastScan = DateTime.MinValue;
     private readonly InventoryType[] _retainerPages =
     [
         InventoryType.RetainerPage1, InventoryType.RetainerPage2, InventoryType.RetainerPage3,
@@ -21,39 +22,36 @@ public unsafe class RetainerScanner
 
     private void OnUpdate(object framework)
     {
+        if ((DateTime.Now - _lastScan).TotalSeconds < 3) return;
+
         try
         {
             var invManager = InventoryManager.Instance();
             if (invManager == null) return;
 
-            var retainerInv = invManager->GetInventoryContainer(InventoryType.RetainerPage1);
-            if (retainerInv == null || !retainerInv->IsLoaded) return;
+            var container = invManager->GetInventoryContainer(InventoryType.RetainerPage1);
+            if (container == null || !container->IsLoaded) return;
 
-            var retManager = FFXIVClientStructs.FFXIV.Client.Game.RetainerManager.Instance();
+            var retManager = RetainerManager.Instance();
             if (retManager == null) return;
 
             var activeRetainer = retManager->GetActiveRetainer();
-            if (activeRetainer == null) return;
+            if (activeRetainer == null || activeRetainer->RetainerId == 0) return;
 
-            var retainerId = activeRetainer->RetainerId;
-            if (retainerId == 0) return;
-
-            var name = Encoding.UTF8.GetString(activeRetainer->Name).TrimEnd('\0');
-
-            if (DateTime.Now.Second % 3 != 0) return;
-
-            ScanRetainer(retainerId, name);
+            _lastScan = DateTime.Now;
+            ScanRetainer(activeRetainer->RetainerId, Encoding.UTF8.GetString(activeRetainer->Name).TrimEnd('\0'));
         }
-        catch (Exception)
+        catch
         {
+            // Ignore
         }
     }
 
-    private void ScanRetainer(ulong retainerId, string? name)
+    private void ScanRetainer(ulong retainerId, string name)
     {
-        var manager = InventoryManager.Instance();
         var itemsFound = new List<SavedItem>();
         var itemSheet = Svc.Data.GetExcelSheet<Item>();
+        var manager = InventoryManager.Instance();
 
         foreach (var page in _retainerPages)
         {
@@ -65,27 +63,37 @@ public unsafe class RetainerScanner
                 var item = container->Items[i];
                 if (item.ItemId == 0) continue;
 
-                var row = itemSheet.GetRowOrDefault(item.ItemId);
-                bool isHq = item.Flags.HasFlag(InventoryItem.ItemFlags.HighQuality);
-
                 itemsFound.Add(new SavedItem
                 {
                     ItemId = item.ItemId,
                     Quantity = (int)item.Quantity,
-                    IsHq = isHq,
-                    Name = row?.Name.ToString() ?? "Unknown"
+                    IsHq = item.Flags.HasFlag(InventoryItem.ItemFlags.HighQuality),
+                    Name = itemSheet.GetRowOrDefault(item.ItemId)?.Name.ToString() ?? "Unknown"
                 });
             }
         }
 
-        Plugin.Instance.Configuration.RetainerInventories[retainerId] = itemsFound;
+        var config = Plugin.Instance.Configuration;
+        bool updated = false;
 
-        if (!string.IsNullOrEmpty(name))
+        if (!config.RetainerInventories.TryGetValue(retainerId, out var existing) ||
+            existing.Count != itemsFound.Count ||
+            !existing.Select(x => x.ItemId).SequenceEqual(itemsFound.Select(x => x.ItemId)))
         {
-            Plugin.Instance.Configuration.RetainerNames[retainerId] = name;
+            config.RetainerInventories[retainerId] = itemsFound;
+            updated = true;
         }
 
-        Plugin.Instance.Configuration.Save();
-        Plugin.Instance.PriceFetcher.FetchPrices(itemsFound.Select(x => x.ItemId).Distinct());
+        if (config.RetainerNames.TryAdd(retainerId, name) || config.RetainerNames[retainerId] != name)
+        {
+            config.RetainerNames[retainerId] = name;
+            updated = true;
+        }
+
+        if (updated)
+        {
+            config.Save();
+            Plugin.Instance.PriceFetcher.FetchPrices(itemsFound.Select(x => x.ItemId));
+        }
     }
 }

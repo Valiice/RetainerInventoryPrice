@@ -34,7 +34,7 @@ public class Plugin : IDalamudPlugin
 
         Overlay = new RetainerListOverlay();
 
-        Svc.Commands.AddHandler("/retainerprice", new CommandInfo(OnCommand)
+        Svc.Commands.AddHandler("/retainerprice", new CommandInfo((_, _) => MainWindow.IsOpen = true)
         {
             HelpMessage = "Opens the Retainer Inventory Price window"
         });
@@ -43,9 +43,13 @@ public class Plugin : IDalamudPlugin
         Svc.PluginInterface.UiBuilder.OpenConfigUi += () => MainWindow.IsOpen = true;
     }
 
-    private void OnCommand(string command, string args)
+    public long GetRetainerValue(ulong retainerId)
     {
-        MainWindow.IsOpen = true;
+        if (!Configuration.RetainerInventories.TryGetValue(retainerId, out var items)) return 0;
+        lock (Configuration.Lock)
+        {
+            return items.Sum(item => Configuration.PriceCache.TryGetValue(item.ItemId, out var price) ? price * item.Quantity : 0);
+        }
     }
 
     public void Dispose()
@@ -56,5 +60,7 @@ public class Plugin : IDalamudPlugin
         Overlay?.Dispose();
 
         ECommonsMain.Dispose();
+
+        GC.SuppressFinalize(this);
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Dalamud.Configuration;
 using Dalamud.Plugin;
+using Newtonsoft.Json;
 
 namespace RetainerInventoryPrice;
 
@@ -7,23 +8,26 @@ namespace RetainerInventoryPrice;
 public class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 1;
-    public Dictionary<ulong, List<SavedItem>> RetainerInventories { get; set; } = new();
-    public Dictionary<uint, long> PriceCache { get; set; } = new();
-    public Dictionary<ulong, string> RetainerNames { get; set; } = new();
+    public Dictionary<ulong, List<SavedItem>> RetainerInventories { get; set; } = [];
+    public Dictionary<uint, long> PriceCache { get; set; } = [];
+    public Dictionary<ulong, string> RetainerNames { get; set; } = [];
 
     [NonSerialized]
-    private IDalamudPluginInterface? pluginInterface;
+    private IDalamudPluginInterface? _pluginInterface;
+
+    [JsonIgnore]
+    public readonly object Lock = new();
 
     public static Configuration Get(IDalamudPluginInterface pluginInterface)
     {
         var config = pluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-        config.pluginInterface = pluginInterface;
+        config._pluginInterface = pluginInterface;
         return config;
     }
 
     public void Save()
     {
-        pluginInterface?.SavePluginConfig(this);
+        _pluginInterface?.SavePluginConfig(this);
     }
 }
 

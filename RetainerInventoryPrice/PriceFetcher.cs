@@ -1,7 +1,6 @@
 ﻿using ECommons.DalamudServices;
 using Newtonsoft.Json.Linq;
 
-
 namespace RetainerInventoryPrice;
 
 public class PriceFetcher
@@ -13,11 +12,16 @@ public class PriceFetcher
     {
         if (_isFetching) return;
 
-        var toFetch = itemIds.Where(id => !Plugin.Instance.Configuration.PriceCache.ContainsKey(id)).ToList();
+        List<uint> toFetch;
+        lock (Plugin.Instance.Configuration.Lock)
+        {
+            toFetch = [.. itemIds.Where(id => !Plugin.Instance.Configuration.PriceCache.ContainsKey(id)).Distinct()];
+        }
 
-        if (toFetch.Count == 0) return;
-
-        _ = FetchAsync(toFetch);
+        if (toFetch.Count > 0)
+        {
+            _ = FetchAsync(toFetch);
+        }
     }
 
     private async Task FetchAsync(List<uint> itemIds)
@@ -27,26 +31,25 @@ public class PriceFetcher
         {
             var worldId = Svc.PlayerState?.CurrentWorld.RowId ?? 74;
 
-            var chunks = itemIds.Chunk(50);
-
-            foreach (var chunk in chunks)
+            foreach (var chunk in itemIds.Chunk(50))
             {
-                var idString = string.Join(",", chunk);
-                var url = $"https://universalis.app/api/v2/{worldId}/{idString}";
-
+                var url = $"https://universalis.app/api/v2/{worldId}/{string.Join(",", chunk)}";
                 var response = await _http.GetStringAsync(url);
                 var json = JObject.Parse(response);
 
                 if (json["items"] is JObject items)
                 {
-                    foreach (var prop in items.Properties())
+                    lock (Plugin.Instance.Configuration.Lock)
                     {
-                        if (uint.TryParse(prop.Name, out var id))
+                        foreach (var prop in items.Properties())
                         {
-                            var price = prop.Value["minPrice"]?.Value<long>() ?? 0;
-                            if (price > 0)
+                            if (uint.TryParse(prop.Name, out var id))
                             {
-                                Plugin.Instance.Configuration.PriceCache[id] = price;
+                                var price = prop.Value["minPrice"]?.Value<long>() ?? 0;
+                                if (price > 0)
+                                {
+                                    Plugin.Instance.Configuration.PriceCache[id] = price;
+                                }
                             }
                         }
                     }
