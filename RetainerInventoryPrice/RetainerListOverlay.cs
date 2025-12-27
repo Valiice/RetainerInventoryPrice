@@ -9,8 +9,8 @@ namespace RetainerInventoryPrice;
 public unsafe class RetainerListOverlay : IDisposable
 {
     private const float _startYOffset = 80f;
-    private const float _rowHeight = 24f;
-    private const float _columnXOffset = 175f;
+    private const float _rowHeight = 22f;
+    private const float _columnXOffset = 160f;
 
     public RetainerListOverlay()
     {
@@ -53,24 +53,28 @@ public unsafe class RetainerListOverlay : IDisposable
                     addon->Y + ((_startYOffset + (activeRow * _rowHeight)) * addon->Scale)
                 );
 
-                DrawOverlayText(retainer.RetainerId, pos, $"{totalValue:N0} G");
+                DrawOverlayText(retainer.RetainerId, pos, addon->Scale, $"{totalValue:N0} G");
             }
             activeRow++;
         }
     }
 
-    private static void DrawOverlayText(ulong id, Vector2 pos, string text)
+    private static void DrawOverlayText(ulong id, Vector2 pos, float scale, string text)
     {
         ImGui.SetNextWindowPos(pos);
-        ImGui.SetNextWindowSize(new Vector2(150, 0));
+        ImGui.SetNextWindowSize(new Vector2(220 * scale, 0));
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
 
         if (ImGui.Begin($"RetOverlay_{id}", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoBackground | ImGuiWindowFlags.NoInputs | ImGuiWindowFlags.NoFocusOnAppearing | ImGuiWindowFlags.NoNav | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoBringToFrontOnFocus))
         {
-            ImGui.SetCursorPos(Vector2.One);
+            ImGui.SetWindowFontScale(scale);
+
+            ImGui.SetCursorPos(new Vector2(1 * scale, 1 * scale));
             ImGui.TextColored(new Vector4(0, 0, 0, 1), text);
+
             ImGui.SetCursorPos(Vector2.Zero);
-            ImGui.TextColored(new Vector4(0.5f, 1f, 0.5f, 1f), text);
+            ImGui.TextColored(new Vector4(0.95f, 0.95f, 0.95f, 1f), text);
+
             ImGui.End();
         }
         ImGui.PopStyleVar();
