@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text; // Needed for Encoding
+﻿using System.Text;
 using ECommons.DalamudServices;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using Lumina.Excel.Sheets;
@@ -41,7 +38,6 @@ public unsafe class RetainerScanner
             var retainerId = activeRetainer->RetainerId;
             if (retainerId == 0) return;
 
-            // FIX: Convert the Span<byte> name to a String
             var name = Encoding.UTF8.GetString(activeRetainer->Name).TrimEnd('\0');
 
             if (DateTime.Now.Second % 3 != 0) return;
@@ -50,7 +46,6 @@ public unsafe class RetainerScanner
         }
         catch (Exception)
         {
-            // Suppress errors
         }
     }
 

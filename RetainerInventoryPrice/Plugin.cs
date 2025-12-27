@@ -12,9 +12,12 @@ public class Plugin : IDalamudPlugin
     public static Plugin Instance { get; private set; } = null!;
     public Configuration Configuration { get; private set; }
     public WindowSystem WindowSystem = new("RetainerInventoryPrice");
+
     public RetainerScanner Scanner { get; private set; }
     public PriceFetcher PriceFetcher { get; private set; }
+
     public MainWindow MainWindow { get; private set; }
+    public RetainerListOverlay Overlay { get; private set; }
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -28,6 +31,8 @@ public class Plugin : IDalamudPlugin
 
         MainWindow = new MainWindow();
         WindowSystem.AddWindow(MainWindow);
+
+        Overlay = new RetainerListOverlay();
 
         Svc.Commands.AddHandler("/retainerprice", new CommandInfo(OnCommand)
         {
@@ -46,7 +51,10 @@ public class Plugin : IDalamudPlugin
     public void Dispose()
     {
         Svc.Commands.RemoveHandler("/retainerprice");
+
         WindowSystem.RemoveAllWindows();
+        Overlay?.Dispose();
+
         ECommonsMain.Dispose();
     }
 }

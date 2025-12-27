@@ -13,7 +13,6 @@ public class PriceFetcher
     {
         if (_isFetching) return;
 
-        // Filter out items we already have cached prices for
         var toFetch = itemIds.Where(id => !Plugin.Instance.Configuration.PriceCache.ContainsKey(id)).ToList();
 
         if (toFetch.Count == 0) return;
@@ -26,9 +25,8 @@ public class PriceFetcher
         _isFetching = true;
         try
         {
-            var worldId = Svc.ClientState.LocalPlayer?.CurrentWorld.RowId ?? 74; // Fallback to Coeurl
+            var worldId = Svc.PlayerState?.CurrentWorld.RowId ?? 74;
 
-            // Chunk requests to avoid hitting URL length limits (50 items per request)
             var chunks = itemIds.Chunk(50);
 
             foreach (var chunk in chunks)
@@ -45,7 +43,6 @@ public class PriceFetcher
                     {
                         if (uint.TryParse(prop.Name, out var id))
                         {
-                            // Grab minimum price, default to 0 if null
                             var price = prop.Value["minPrice"]?.Value<long>() ?? 0;
                             if (price > 0)
                             {
@@ -54,7 +51,6 @@ public class PriceFetcher
                         }
                     }
                 }
-                // Small delay between chunks
                 await Task.Delay(100);
             }
 

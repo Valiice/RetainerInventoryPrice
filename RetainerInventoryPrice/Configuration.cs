@@ -1,7 +1,5 @@
 ﻿using Dalamud.Configuration;
 using Dalamud.Plugin;
-using System;
-using System.Collections.Generic;
 
 namespace RetainerInventoryPrice;
 
@@ -9,14 +7,8 @@ namespace RetainerInventoryPrice;
 public class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 1;
-
-    // RetainerID -> List of Items
     public Dictionary<ulong, List<SavedItem>> RetainerInventories { get; set; } = new();
-
-    // ItemID -> Price
     public Dictionary<uint, long> PriceCache { get; set; } = new();
-
-    // NEW: RetainerID -> Retainer Name
     public Dictionary<ulong, string> RetainerNames { get; set; } = new();
 
     [NonSerialized]
