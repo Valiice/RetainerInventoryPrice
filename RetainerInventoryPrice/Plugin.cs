@@ -14,6 +14,7 @@ public class Plugin : IDalamudPlugin
     public WindowSystem WindowSystem = new("RetainerInventoryPrice");
 
     public RetainerScanner Scanner { get; private set; }
+    public PlayerScanner PlayerScanner { get; private set; }
     public PriceFetcher PriceFetcher { get; private set; }
 
     public MainWindow MainWindow { get; private set; }
@@ -27,6 +28,7 @@ public class Plugin : IDalamudPlugin
         Configuration = Configuration.Get(pluginInterface);
 
         Scanner = new RetainerScanner();
+        PlayerScanner = new PlayerScanner();
         PriceFetcher = new PriceFetcher();
 
         MainWindow = new MainWindow();
@@ -41,15 +43,26 @@ public class Plugin : IDalamudPlugin
 
         Svc.PluginInterface.UiBuilder.Draw += WindowSystem.Draw;
         Svc.PluginInterface.UiBuilder.OpenConfigUi += () => MainWindow.IsOpen = true;
+        Svc.PluginInterface.UiBuilder.OpenMainUi += () => MainWindow.IsOpen = true;
     }
 
-    public long GetRetainerValue(ulong retainerId)
+    public long GetRetainerValue(ulong retainerId) => GetRetainerValue(retainerId, Configuration.PriceCache);
+    public long GetRetainerValueDc(ulong retainerId) => GetRetainerValue(retainerId, Configuration.DcPriceCache);
+    private long GetRetainerValue(ulong retainerId, Dictionary<uint, long> cache)
     {
         if (!Configuration.RetainerInventories.TryGetValue(retainerId, out var items)) return 0;
         lock (Configuration.Lock)
-        {
-            return items.Sum(item => Configuration.PriceCache.TryGetValue(item.ItemId, out var price) ? price * item.Quantity : 0);
-        }
+            return items.Sum(item => cache.TryGetValue(item.ItemId, out var price) ? price * item.Quantity : 0);
+    }
+
+    public long GetPlayerBagsValue() => GetPlayerValue(Configuration.PlayerBags, Configuration.PriceCache);
+    public long GetPlayerBagsValueDc() => GetPlayerValue(Configuration.PlayerBags, Configuration.DcPriceCache);
+    public long GetPlayerCrystalsValue() => GetPlayerValue(Configuration.PlayerCrystals, Configuration.PriceCache);
+    public long GetPlayerCrystalsValueDc() => GetPlayerValue(Configuration.PlayerCrystals, Configuration.DcPriceCache);
+    private long GetPlayerValue(List<SavedItem> items, Dictionary<uint, long> cache)
+    {
+        lock (Configuration.Lock)
+            return items.Sum(item => cache.TryGetValue(item.ItemId, out var price) ? price * item.Quantity : 0);
     }
 
     public void Dispose()
@@ -58,6 +71,7 @@ public class Plugin : IDalamudPlugin
 
         WindowSystem.RemoveAllWindows();
         Overlay?.Dispose();
+        PlayerScanner?.Dispose();
 
         ECommonsMain.Dispose();
 

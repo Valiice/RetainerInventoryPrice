@@ -10,7 +10,10 @@ public class Configuration : IPluginConfiguration
     public int Version { get; set; } = 1;
     public Dictionary<ulong, List<SavedItem>> RetainerInventories { get; set; } = [];
     public Dictionary<uint, long> PriceCache { get; set; } = [];
+    public Dictionary<uint, long> DcPriceCache { get; set; } = [];
     public Dictionary<ulong, string> RetainerNames { get; set; } = [];
+    public List<SavedItem> PlayerBags { get; set; } = [];
+    public List<SavedItem> PlayerCrystals { get; set; } = [];
 
     [NonSerialized]
     private IDalamudPluginInterface? _pluginInterface;
