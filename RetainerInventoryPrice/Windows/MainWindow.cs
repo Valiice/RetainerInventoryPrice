@@ -1,5 +1,7 @@
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Textures;
 using Dalamud.Interface.Windowing;
+using Lumina.Excel.Sheets;
 using System.Numerics;
 
 namespace RetainerInventoryPrice.Windows;
@@ -39,6 +41,12 @@ public class MainWindow : Window
                 ImGui.EndTabItem();
             }
 
+            if (ImGui.BeginTabItem("History"))
+            {
+                DrawHistoryTab(config);
+                ImGui.EndTabItem();
+            }
+
             ImGui.EndTabBar();
         }
 
@@ -55,6 +63,7 @@ public class MainWindow : Window
             {
                 config.PriceCache.Clear();
                 config.DcPriceCache.Clear();
+                config.PriceCacheTimestamps.Clear();
             }
             config.Save();
             Plugin.Instance.PlayerScanner.ScanNow();
@@ -126,6 +135,49 @@ public class MainWindow : Window
         }
     }
 
+    private static void DrawHistoryTab(Configuration config)
+    {
+        ImGui.Spacing();
+
+        List<NetWorthSnapshot> history;
+        lock (config.Lock)
+            history = [.. config.NetWorthHistory];
+
+        if (history.Count == 0)
+        {
+            ImGui.TextDisabled("No snapshots yet. A snapshot is recorded every hour.");
+            return;
+        }
+
+        ImGui.TextDisabled($"{history.Count} snapshots (up to 30 days)");
+        ImGui.Spacing();
+
+        if (ImGui.BeginTable("NetWorthHistory", 3,
+            ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.ScrollY,
+            new Vector2(0, 350)))
+        {
+            ImGui.TableSetupScrollFreeze(0, 1);
+            ImGui.TableSetupColumn("Time", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("World Total");
+            ImGui.TableSetupColumn("DC Total");
+            ImGui.TableHeadersRow();
+
+            for (int i = history.Count - 1; i >= 0; i--)
+            {
+                var snap = history[i];
+                ImGui.TableNextRow();
+                ImGui.TableNextColumn();
+                ImGui.Text(snap.Timestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm"));
+                ImGui.TableNextColumn();
+                ImGui.TextColored(new Vector4(0.6f, 0.9f, 1f, 1f), $"{snap.WorldTotal:N0} gil");
+                ImGui.TableNextColumn();
+                ImGui.TextColored(new Vector4(0.6f, 1f, 0.6f, 1f), $"{snap.DcTotal:N0} gil");
+            }
+
+            ImGui.EndTable();
+        }
+    }
+
     private static void DrawRetainerListHeader()
     {
         ImGui.Columns(4, "RetainerList", false);
@@ -176,15 +228,19 @@ public class MainWindow : Window
 
     private static void DrawItemsTable(string idPrefix, List<SavedItem> items)
     {
+        var itemSheet = ECommons.DalamudServices.Svc.Data.GetExcelSheet<Item>();
+
         var sortedItems = items.Select(item =>
         {
             lock (Plugin.Instance.Configuration.Lock)
             {
                 var worldPrice = Plugin.Instance.Configuration.PriceCache.TryGetValue(item.ItemId, out var wp) ? wp : 0;
                 var dcPrice = Plugin.Instance.Configuration.DcPriceCache.TryGetValue(item.ItemId, out var dp) ? dp : 0;
+                var iconId = itemSheet?.GetRowOrDefault(item.ItemId)?.Icon ?? 0;
                 return new
                 {
                     Item = item,
+                    IconId = iconId,
                     WorldPrice = worldPrice,
                     WorldTotal = worldPrice * item.Quantity,
                     DcPrice = dcPrice,
@@ -194,7 +250,8 @@ public class MainWindow : Window
         }).OrderByDescending(x => x.WorldTotal).ToList();
 
         ImGui.Indent(20f);
-        if (ImGui.BeginTable($"Items_{idPrefix}", 6, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit))
+        if (ImGui.BeginTable($"Items_{idPrefix}", 6,
+            ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingFixedFit))
         {
             ImGui.TableSetupColumn("Item Name", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableSetupColumn("Qty");
@@ -206,9 +263,25 @@ public class MainWindow : Window
 
             foreach (var entry in sortedItems)
             {
-                ImGui.TableNextRow();
+                ImGui.TableNextRow(ImGuiTableRowFlags.None, 36f);
                 ImGui.TableNextColumn();
-                ImGui.Text(entry.Item.IsHq ? $"{entry.Item.Name} (HQ)" : entry.Item.Name);
+
+                if (entry.IconId > 0)
+                {
+                    var wrap = Plugin.TextureProvider
+                        .GetFromGameIcon(new GameIconLookup(entry.IconId))
+                        .GetWrapOrDefault();
+                    if (wrap != null)
+                    {
+                        ImGui.Image(wrap.Handle, new Vector2(32, 32));
+                        ImGui.SameLine();
+                    }
+                }
+
+                var label = entry.Item.IsHq ? $"{entry.Item.Name} (HQ)" : entry.Item.Name;
+                ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (32f - ImGui.GetTextLineHeight()) / 2f);
+                ImGui.Text(label);
+
                 ImGui.TableNextColumn();
                 ImGui.Text($"{entry.Item.Quantity}");
                 ImGui.TableNextColumn();
@@ -220,6 +293,7 @@ public class MainWindow : Window
                 ImGui.TableNextColumn();
                 ImGui.Text($"{entry.DcTotal:N0}");
             }
+
             ImGui.EndTable();
         }
         ImGui.Unindent(20f);
