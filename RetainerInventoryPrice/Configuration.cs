@@ -1,4 +1,4 @@
-﻿using Dalamud.Configuration;
+using Dalamud.Configuration;
 using Dalamud.Plugin;
 using Newtonsoft.Json;
 
@@ -11,9 +11,11 @@ public class Configuration : IPluginConfiguration
     public Dictionary<ulong, List<SavedItem>> RetainerInventories { get; set; } = [];
     public Dictionary<uint, long> PriceCache { get; set; } = [];
     public Dictionary<uint, long> DcPriceCache { get; set; } = [];
+    public Dictionary<uint, DateTime> PriceCacheTimestamps { get; set; } = [];
     public Dictionary<ulong, string> RetainerNames { get; set; } = [];
     public List<SavedItem> PlayerBags { get; set; } = [];
     public List<SavedItem> PlayerCrystals { get; set; } = [];
+    public List<NetWorthSnapshot> NetWorthHistory { get; set; } = [];
 
     [NonSerialized]
     private IDalamudPluginInterface? _pluginInterface;
@@ -41,4 +43,12 @@ public class SavedItem
     public int Quantity { get; set; }
     public bool IsHq { get; set; }
     public string Name { get; set; } = "";
+}
+
+[Serializable]
+public class NetWorthSnapshot
+{
+    public DateTime Timestamp { get; set; }
+    public long WorldTotal { get; set; }
+    public long DcTotal { get; set; }
 }

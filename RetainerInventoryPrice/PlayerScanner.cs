@@ -37,7 +37,7 @@ public unsafe class PlayerScanner
         {
             // Ignore
         }
-    }
+    } 
 
     public void ScanNow()
     {
