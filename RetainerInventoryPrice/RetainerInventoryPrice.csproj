@@ -6,6 +6,7 @@
 		<Platforms>x64</Platforms>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+		<Version>1.1.0</Version>
 	</PropertyGroup>
 
 	<ItemGroup>
