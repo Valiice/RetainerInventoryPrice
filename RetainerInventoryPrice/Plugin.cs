@@ -107,6 +107,7 @@ public class Plugin : IDalamudPlugin
         WindowSystem.RemoveAllWindows();
         Overlay?.Dispose();
         PlayerScanner?.Dispose();
+        Configuration.Dispose();
 
         ECommonsMain.Dispose();
 

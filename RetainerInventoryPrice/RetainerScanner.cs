@@ -76,18 +76,21 @@ public unsafe class RetainerScanner
         var config = Plugin.Instance.Configuration;
         bool updated = false;
 
-        if (!config.RetainerInventories.TryGetValue(retainerId, out var existing) ||
-            existing.Count != itemsFound.Count ||
-            !existing.Select(x => x.ItemId).SequenceEqual(itemsFound.Select(x => x.ItemId)))
+        lock (config.Lock)
         {
-            config.RetainerInventories[retainerId] = itemsFound;
-            updated = true;
-        }
+            if (!config.RetainerInventories.TryGetValue(retainerId, out var existing) ||
+                existing.Count != itemsFound.Count ||
+                !existing.Select(x => x.ItemId).SequenceEqual(itemsFound.Select(x => x.ItemId)))
+            {
+                config.RetainerInventories[retainerId] = itemsFound;
+                updated = true;
+            }
 
-        if (config.RetainerNames.TryAdd(retainerId, name) || config.RetainerNames[retainerId] != name)
-        {
-            config.RetainerNames[retainerId] = name;
-            updated = true;
+            if (config.RetainerNames.TryAdd(retainerId, name) || config.RetainerNames[retainerId] != name)
+            {
+                config.RetainerNames[retainerId] = name;
+                updated = true;
+            }
         }
 
         if (updated)
