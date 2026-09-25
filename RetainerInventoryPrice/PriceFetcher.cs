@@ -9,8 +9,12 @@ public class PriceFetcher
     private static readonly TimeSpan CacheExpiry = TimeSpan.FromHours(24);
 
     private readonly HttpClient _http = new(new SocketsHttpHandler { UseProxy = false }) { Timeout = TimeSpan.FromSeconds(30) };
+    private static readonly TimeSpan InitialBackoff = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan MaxBackoff = TimeSpan.FromHours(1);
+
     private bool _isFetching = false;
     private DateTime _nextFetchAllowed = DateTime.MinValue;
+    private TimeSpan _backoff = InitialBackoff;
 
     public void FetchPrices(IEnumerable<uint> itemIds)
     {
@@ -64,13 +68,18 @@ public class PriceFetcher
                 await Task.Delay(100);
             }
 
+            _backoff = InitialBackoff;
             Plugin.Instance.Configuration.Save();
             Svc.Log.Debug($"Fetch complete: {Plugin.Instance.Configuration.PriceCache.Count} world, {Plugin.Instance.Configuration.DcPriceCache.Count} DC items cached.");
         }
         catch (Exception ex)
         {
-            Svc.Log.Error($"Universalis fetch failed: {ex.Message}");
-            _nextFetchAllowed = DateTime.UtcNow.AddMinutes(5);
+            // Universalis outages last hours, not minutes. Back off further after each failure
+            // (5 min, 10, 20, 40, then hourly) so a bad evening does not mean an error every
+            // five minutes; a successful fetch resets the delay.
+            _nextFetchAllowed = DateTime.UtcNow + _backoff;
+            Svc.Log.Warning($"Universalis fetch failed, retrying in {_backoff.TotalMinutes:0} min: {ex.Message}");
+            _backoff = TimeSpan.FromTicks(Math.Min(_backoff.Ticks * 2, MaxBackoff.Ticks));
         }
         finally
         {
